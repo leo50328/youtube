@@ -35,7 +35,7 @@
             box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
             width: 100%;
             max-width: 380px;
-            min-height: 350px;
+            min-height: 380px;
             border: 1px solid var(--border);
             position: relative;
             display: flex;
@@ -43,11 +43,7 @@
             justify-content: center;
         }
 
-        /* 分頁控制 */
-        .page {
-            display: none;
-            animation: slideUp 0.3s ease-out;
-        }
+        .page { display: none; animation: slideUp 0.3s ease-out; }
         .active { display: block; }
 
         @keyframes slideUp {
@@ -55,10 +51,9 @@
             to { opacity: 1; transform: translateY(0); }
         }
 
-        h2 { text-align: center; margin-bottom: 30px; font-size: 24px; }
+        h2 { text-align: center; margin-bottom: 30px; font-size: 24px; font-weight: 600; }
         h2 span { color: var(--primary-red); }
 
-        /* 輸入框與按鈕 */
         input[type="text"] {
             width: 100%;
             padding: 15px;
@@ -69,6 +64,7 @@
             font-size: 16px;
             box-sizing: border-box;
             outline: none;
+            transition: border-color 0.3s;
         }
         input[type="text"]:focus { border-color: var(--primary-red); }
 
@@ -84,11 +80,10 @@
             transition: 0.2s;
         }
         .btn-red { background-color: var(--primary-red); color: white; }
-        .btn-red:hover { background-color: var(--btn-hover); }
+        .btn-red:disabled { background-color: #555; cursor: not-allowed; }
         .btn-outline { background-color: transparent; border: 1px solid var(--border); color: white; }
         .btn-outline:hover { background-color: var(--input-bg); }
 
-        /* 右下角首頁按鈕 */
         .home-btn {
             position: absolute;
             bottom: 20px;
@@ -101,18 +96,18 @@
             text-decoration: underline;
         }
 
-        /* 資訊卡片 */
         .info-card {
             background: #222;
             padding: 15px;
             border-radius: 10px;
             margin-bottom: 20px;
             font-size: 14px;
-            line-height: 1.6;
+            line-height: 1.8;
         }
         .info-card b { color: var(--primary-red); }
 
-        #error-txt { color: var(--primary-red); font-size: 12px; margin-top: 8px; text-align: center; }
+        #error-txt { color: var(--primary-red); font-size: 13px; margin-top: 12px; text-align: center; min-height: 20px; }
+        .loading-spinner { color: var(--text-dim); font-size: 12px; margin-top: 10px; text-align: center; }
     </style>
 </head>
 <body>
@@ -121,7 +116,7 @@
     
     <div id="p1" class="page active">
         <h2><span>YouTube</span> 下載器</h2>
-        <input type="text" id="urlInput" placeholder="在此貼上 YouTube 網址..." oninput="autoNextP1()">
+        <input type="text" id="urlInput" placeholder="在此貼上影片網址..." oninput="autoNextP1()">
         <div id="error-txt"></div>
     </div>
 
@@ -134,10 +129,9 @@
 
     <div id="p3" class="page">
         <h2>選擇影片畫質</h2>
-        <button class="btn btn-outline" onclick="selectRes('1080p')">1080p (Full HD)</button>
         <button class="btn btn-outline" onclick="selectRes('720p')">720p (HD)</button>
-        <button class="btn btn-outline" onclick="selectRes('480p')">480p</button>
-        <button class="btn btn-outline" onclick="selectRes('360p')">360p</button>
+        <button class="btn btn-outline" onclick="selectRes('480p')">480p (Large)</button>
+        <button class="btn btn-outline" onclick="selectRes('360p')">360p (Medium)</button>
         <button class="home-btn" onclick="reset()">回主畫面</button>
     </div>
 
@@ -145,10 +139,11 @@
         <h2>確認下載資訊</h2>
         <div class="info-card">
             <div>類型：<b id="disp-type"></b></div>
-            <div>畫質：<b id="disp-res"></b></div>
-            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">網址：<span id="disp-url" style="color:#666"></span></div>
+            <div>需求：<b id="disp-res"></b></div>
+            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">網址：<span id="disp-url" style="color:#777"></span></div>
         </div>
-        <button class="btn btn-red" onclick="doDownload()">開始下載</button>
+        <button id="dl-btn" class="btn btn-red" onclick="doDownload()">確認並開始下載</button>
+        <div id="status-msg" class="loading-spinner"></div>
         <button class="home-btn" onclick="reset()">回主畫面</button>
     </div>
 
@@ -156,20 +151,20 @@
 
 <script>
     let config = { url: '', type: '', res: '' };
+    // 你的 Render API 網址
+    const API_URL = 'https://youtube-igvp.onrender.com/download';
 
-    // P1 自動跳轉邏輯
     function autoNextP1() {
         const input = document.getElementById('urlInput');
         const err = document.getElementById('error-txt');
         const val = input.value.trim();
         
-        // 簡單檢查是否為 youtube 連結
         if (val.includes('youtube.com/') || val.includes('youtu.be/')) {
             config.url = val;
             err.innerText = "";
             showPage('p2');
-        } else if (val.length > 10) {
-            err.innerText = "請輸入正確的 YouTube 網址";
+        } else if (val.length > 15) {
+            err.innerText = "❌ 請輸入有效的 YouTube 網址";
         }
     }
 
@@ -178,7 +173,7 @@
         if (type === 'MP4') {
             showPage('p3');
         } else {
-            config.res = '高品質音訊';
+            config.res = 'MP3 Audio';
             prepareP4();
         }
     }
@@ -204,25 +199,45 @@
         config = { url: '', type: '', res: '' };
         document.getElementById('urlInput').value = '';
         document.getElementById('error-txt').innerText = '';
+        document.getElementById('status-msg').innerText = '';
+        document.getElementById('dl-btn').disabled = false;
         showPage('p1');
     }
 
     async function doDownload() {
-    const status = document.getElementById('error-txt');
-    status.innerText = "正在傳送下載請求...";
-    
-    try {
-        const response = await fetch('你的Render網址/download', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify(config)
-        });
-        const result = await response.json();
-        alert(result.msg);
-    } catch (error) {
-        alert("連線後端失敗！");
+        const btn = document.getElementById('dl-btn');
+        const status = document.getElementById('status-msg');
+        
+        btn.disabled = true;
+        btn.innerText = "處理中...";
+        status.innerText = "⏳ 正在喚醒雲端伺服器 (初次啟動約需 30 秒)...";
+
+        try {
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(config)
+            });
+            
+            const result = await response.json();
+            
+            if (result.status === "success") {
+                alert("✅ 恭喜！" + result.msg);
+                status.innerText = "🎉 下載請求已成功傳送！";
+            } else {
+                alert("❌ 下載失敗：" + result.msg);
+                status.innerText = "發生錯誤，請重試。";
+                btn.disabled = false;
+                btn.innerText = "確認並開始下載";
+            }
+        } catch (error) {
+            console.error(error);
+            alert("⚠️ 無法連線至伺服器\n這通常是因為 Render 免費版正在開機中，請等 30 秒後再按一次。");
+            btn.disabled = false;
+            btn.innerText = "重試下載";
+            status.innerText = "連線逾時，請再試一次。";
+        }
     }
-}
 </script>
 
 </body>

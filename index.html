@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube 下載器</title>
+    <style>
+        :root {
+            --bg-color: #0f0f0f;
+            --card-bg: #1a1a1a;
+            --primary-red: #ff0000;
+            --text-main: #ffffff;
+            --text-dim: #aaaaaa;
+            --input-bg: #2a2a2a;
+            --border: #333333;
+            --btn-hover: #cc0000;
+        }
+
+        body {
+            font-family: "Segoe UI", "Microsoft JhengHei", sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            background-color: var(--card-bg);
+            padding: 40px;
+            border-radius: 20px;
+            box-shadow: 0 15px 35px rgba(0, 0, 0, 0.7);
+            width: 100%;
+            max-width: 380px;
+            min-height: 350px;
+            border: 1px solid var(--border);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        /* 分頁控制 */
+        .page {
+            display: none;
+            animation: slideUp 0.3s ease-out;
+        }
+        .active { display: block; }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        h2 { text-align: center; margin-bottom: 30px; font-size: 24px; }
+        h2 span { color: var(--primary-red); }
+
+        /* 輸入框與按鈕 */
+        input[type="text"] {
+            width: 100%;
+            padding: 15px;
+            background-color: var(--input-bg);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            color: white;
+            font-size: 16px;
+            box-sizing: border-box;
+            outline: none;
+        }
+        input[type="text"]:focus { border-color: var(--primary-red); }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-red { background-color: var(--primary-red); color: white; }
+        .btn-red:hover { background-color: var(--btn-hover); }
+        .btn-outline { background-color: transparent; border: 1px solid var(--border); color: white; }
+        .btn-outline:hover { background-color: var(--input-bg); }
+
+        /* 右下角首頁按鈕 */
+        .home-btn {
+            position: absolute;
+            bottom: 20px;
+            right: 25px;
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            font-size: 14px;
+            text-decoration: underline;
+        }
+
+        /* 資訊卡片 */
+        .info-card {
+            background: #222;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        .info-card b { color: var(--primary-red); }
+
+        #error-txt { color: var(--primary-red); font-size: 12px; margin-top: 8px; text-align: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    
+    <div id="p1" class="page active">
+        <h2><span>YouTube</span> 下載器</h2>
+        <input type="text" id="urlInput" placeholder="在此貼上 YouTube 網址..." oninput="autoNextP1()">
+        <div id="error-txt"></div>
+    </div>
+
+    <div id="p2" class="page">
+        <h2>選擇下載格式</h2>
+        <button class="btn btn-red" onclick="selectType('MP4')">影片 (MP4)</button>
+        <button class="btn btn-outline" onclick="selectType('MP3')">音樂 (MP3)</button>
+        <button class="home-btn" onclick="reset()">回主畫面</button>
+    </div>
+
+    <div id="p3" class="page">
+        <h2>選擇影片畫質</h2>
+        <button class="btn btn-outline" onclick="selectRes('1080p')">1080p (Full HD)</button>
+        <button class="btn btn-outline" onclick="selectRes('720p')">720p (HD)</button>
+        <button class="btn btn-outline" onclick="selectRes('480p')">480p</button>
+        <button class="btn btn-outline" onclick="selectRes('360p')">360p</button>
+        <button class="home-btn" onclick="reset()">回主畫面</button>
+    </div>
+
+    <div id="p4" class="page">
+        <h2>確認下載資訊</h2>
+        <div class="info-card">
+            <div>類型：<b id="disp-type"></b></div>
+            <div>畫質：<b id="disp-res"></b></div>
+            <div style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">網址：<span id="disp-url" style="color:#666"></span></div>
+        </div>
+        <button class="btn btn-red" onclick="doDownload()">開始下載</button>
+        <button class="home-btn" onclick="reset()">回主畫面</button>
+    </div>
+
+</div>
+
+<script>
+    let config = { url: '', type: '', res: '' };
+
+    // P1 自動跳轉邏輯
+    function autoNextP1() {
+        const input = document.getElementById('urlInput');
+        const err = document.getElementById('error-txt');
+        const val = input.value.trim();
+        
+        // 簡單檢查是否為 youtube 連結
+        if (val.includes('youtube.com/') || val.includes('youtu.be/')) {
+            config.url = val;
+            err.innerText = "";
+            showPage('p2');
+        } else if (val.length > 10) {
+            err.innerText = "請輸入正確的 YouTube 網址";
+        }
+    }
+
+    function selectType(type) {
+        config.type = type;
+        if (type === 'MP4') {
+            showPage('p3');
+        } else {
+            config.res = '高品質音訊';
+            prepareP4();
+        }
+    }
+
+    function selectRes(res) {
+        config.res = res;
+        prepareP4();
+    }
+
+    function prepareP4() {
+        document.getElementById('disp-type').innerText = config.type;
+        document.getElementById('disp-res').innerText = config.res;
+        document.getElementById('disp-url').innerText = config.url;
+        showPage('p4');
+    }
+
+    function showPage(id) {
+        document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+        document.getElementById(id).classList.add('active');
+    }
+
+    function reset() {
+        config = { url: '', type: '', res: '' };
+        document.getElementById('urlInput').value = '';
+        document.getElementById('error-txt').innerText = '';
+        showPage('p1');
+    }
+
+    function doDownload() {
+        // 這裡目前的行為是除錯提示
+        alert(`【除錯資訊】\n正在準備下載...\n網址：${config.url}\n格式：${config.type}\n畫質：${config.res}\n\n(註：純 HTML 無法執行 Python，需配合 Flask 使用)`);
+    }
+</script>
+
+</body>
+</html>

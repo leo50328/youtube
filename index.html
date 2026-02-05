@@ -207,10 +207,22 @@
         showPage('p1');
     }
 
-    function doDownload() {
-        // 這裡目前的行為是除錯提示
-        alert(`【除錯資訊】\n正在準備下載...\n網址：${config.url}\n格式：${config.type}\n畫質：${config.res}\n\n(註：純 HTML 無法執行 Python，需配合 Flask 使用)`);
+    async function doDownload() {
+    const status = document.getElementById('error-txt');
+    status.innerText = "正在傳送下載請求...";
+    
+    try {
+        const response = await fetch('你的Render網址/download', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify(config)
+        });
+        const result = await response.json();
+        alert(result.msg);
+    } catch (error) {
+        alert("連線後端失敗！");
     }
+}
 </script>
 
 </body>

@@ -1,4 +1,4 @@
 flask
 flask-cors
-pytube
+git+https://github.com/pytube/pytube.git
 gunicorn
